@@ -37,7 +37,7 @@ jobs:
 
       # 5. Train the model — runs model.py
       - name: Train model
-        run: python Regression_with_CNN.py #model.py
+        run: python model.py #model.py
 
       # 6. Upload the saved plot and metrics as artefacts
       #    so you can download them from the GitHub Actions UI

@@ -1,0 +1,49 @@
+stages:
+  preprocess:
+    cmd: python src/preprocess.py
+    deps:
+      - src/preprocess.py
+      - data/Power.csv
+      - params.yaml
+    outs:
+      - artifacts/processed_train.csv
+      - artifacts/processed_test.csv
+      - artifacts/preprocessing/
+
+  train:
+    cmd: python src/model.py
+    deps:
+      - src/model.py
+      - artifacts/processed_train.csv
+      - artifacts/preprocessing/feature_columns.json
+      - params.yaml
+    outs:
+      - artifacts/models/model_bundle.joblib
+      - artifacts/model_comparison.png
+
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - src/evaluate.py
+      - artifacts/processed_test.csv
+      - artifacts/models/model_bundle.joblib
+      - params.yaml
+    metrics:
+      - artifacts/metrics/metrics.json:
+          cache: false
+    outs:
+      - artifacts/metrics/evaluation_results.png:
+          cache: false
+
+  monitor:
+    cmd: python src/monitor.py
+    deps:
+      - src/monitor.py
+      - artifacts/processed_test.csv
+      - artifacts/models/model_bundle.joblib
+      - params.yaml
+    outs:
+      - monitoring/reports/drift_report.json:
+          cache: false
+      - monitoring/alerts/alerts.json:
+          cache: false

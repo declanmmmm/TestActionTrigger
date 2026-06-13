@@ -1,0 +1,21 @@
+{
+    "timestamp": "2026-06-13T10:27:53",
+    "model": "Random Forest",
+    "performance": {
+        "accuracy": 0.937482399324134,
+        "f1_score": 0.9374431574247274,
+        "accuracy_threshold": 0.8,
+        "f1_threshold": 0.78,
+        "performance_ok": true
+    },
+    "drift_detection": {
+        "method": "Kolmogorov-Smirnov test",
+        "ks_threshold": 0.05,
+        "drift_detected": false,
+        "feature_results": {}
+    },
+    "alerts": [
+        "No new data file found. Drift check was skipped."
+    ],
+    "retraining_required": false
+}

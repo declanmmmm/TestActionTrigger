@@ -1,0 +1,34 @@
+data:
+  raw_path:            data/Power.csv
+  new_data_path:       data/new_data.csv
+  processed_train_path: artifacts/processed_train.csv
+  processed_test_path:  artifacts/processed_test.csv
+
+preprocessing:
+  test_size:     0.2
+  random_state:  42
+  target_column: PowerCategory
+  power_bins:    [0, 28467, 35304, .inf]
+  power_labels:  [Low, Medium, High]
+
+models:
+  random_forest:
+    n_estimators: 100
+    max_depth:    15
+    random_state: 42
+  knn:
+    n_neighbors: 7
+    metric:      euclidean
+
+retraining:
+  min_new_rows: 50
+
+monitoring:
+  accuracy_threshold: 0.80
+  f1_threshold:       0.78
+  ks_p_value:         0.05
+
+outputs:
+  model_bundle:    artifacts/models/model_bundle.joblib
+  metrics_path:    artifacts/metrics/metrics.json
+  comparison_plot: artifacts/model_comparison.png

@@ -1,7 +1,9 @@
-tensorflow
+scikit-learn
 numpy
-matplotlib
 pandas
-seaborn
-keras
-category_encoders 
+matplotlib
+joblib
+scipy
+pyyaml
+dvc
+streamlit

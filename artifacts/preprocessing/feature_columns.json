@@ -1,0 +1,12 @@
+[
+    "Temperature",
+    "Humidity",
+    "Wind Speed",
+    "general diffuse flows",
+    "diffuse flows",
+    "DayOfWeek",
+    "Month",
+    "IsWeekend",
+    "HourSin",
+    "HourCos"
+]

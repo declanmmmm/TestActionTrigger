@@ -1,0 +1,130 @@
+name: Retrain and Monitor Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/**"
+      - "src/**"
+      - "params.yaml"
+      - "dvc.yaml"
+      - ".github/workflows/pipeline.yml"
+
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 */12 * * *"   # every 12 hours
+
+permissions:
+  contents: write
+
+jobs:
+  retrain-and-monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure DVC remote
+        run: |
+          dvc remote modify origin --local auth basic
+          dvc remote modify origin --local user "${{ secrets.DAGSHUB_USERNAME }}"
+          dvc remote modify origin --local password "${{ secrets.DAGSHUB_TOKEN }}"
+
+      - name: Pull DVC data
+        run: dvc pull --allow-missing || echo "DVC pull completed with warnings"
+
+      - name: Check for new data
+        run: |
+          if [ -f "data/new_data.csv" ]; then
+            echo "NEW_DATA=true" >> $GITHUB_ENV
+            echo "New data detected."
+          else
+            echo "NEW_DATA=false" >> $GITHUB_ENV
+            echo "No new data."
+          fi
+
+      - name: Run monitoring on current model
+        run: python src/monitor.py || echo "Monitoring completed with warnings"
+
+      - name: Run full pipeline (preprocess → train → evaluate → monitor)
+        if: env.NEW_DATA == 'true'
+        run: dvc repro
+
+      - name: Show metrics
+        if: env.NEW_DATA == 'true'
+        run: |
+          dvc metrics show
+          dvc metrics diff HEAD~1 || echo "No previous metrics to compare"
+
+      - name: Push updated artifacts to DVC
+        if: env.NEW_DATA == 'true'
+        run: dvc push || echo "DVC push completed with warnings"
+
+      - name: Archive processed new data
+        if: env.NEW_DATA == 'true'
+        run: |
+          mkdir -p data/processed
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          mv data/new_data.csv data/processed/new_data_${timestamp}.csv
+          echo "Archived new_data.csv"
+
+      - name: Commit updated files
+        if: env.NEW_DATA == 'true'
+        run: |
+          git add artifacts/ monitoring/ data/processed/ dvc.lock || true
+          if git diff --staged --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "Auto-retrain: updated model with new power data [skip ci]"
+            git push
+          fi
+
+      - name: Upload pipeline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-results-${{ github.run_id }}
+          path: |
+            artifacts/models/
+            artifacts/metrics/
+            artifacts/preprocessing/
+            artifacts/model_comparison.png
+            monitoring/reports/
+            monitoring/alerts/
+          retention-days: 7
+
+      - name: Pipeline summary
+        run: |
+          echo "========================================"
+          echo " PIPELINE COMPLETE"
+          if [ "$NEW_DATA" = "true" ]; then
+            echo " Full retrain triggered by new data."
+          else
+            echo " Monitoring only — no new data."
+          fi
+          echo "========================================"

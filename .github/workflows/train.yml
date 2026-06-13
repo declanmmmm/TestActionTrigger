@@ -7,7 +7,6 @@ on:
       - "data/**"
       - "src/**"
       - "params.yaml"
-      - "dvc.yaml"
       - ".github/workflows/pipeline.yml"
 
   workflow_dispatch:
@@ -69,39 +68,56 @@ jobs:
             echo "No new data."
           fi
 
-      - name: Run monitoring on current model
-        run: python src/monitor.py || echo "Monitoring completed with warnings"
-
-      - name: Run full pipeline (preprocess → train → evaluate → monitor)
-        if: env.NEW_DATA == 'true'
-        run: dvc repro
-
-      - name: Show metrics
+      - name: Merge new data into Power.csv
         if: env.NEW_DATA == 'true'
         run: |
-          dvc metrics show
-          dvc metrics diff HEAD~1 || echo "No previous metrics to compare"
+          python -c "
+          import pandas as pd, os, shutil
+          from datetime import datetime
+
+          main_path = 'data/Power.csv'
+          new_path  = 'data/new_data.csv'
+          archive   = 'data/processed'
+
+          old_df = pd.read_csv(main_path)
+          new_df = pd.read_csv(new_path)
+          print(f'Main dataset rows : {len(old_df)}')
+          print(f'New data rows     : {len(new_df)}')
+
+          combined = pd.concat([old_df, new_df], ignore_index=True)
+          combined = combined.drop_duplicates().dropna()
+          print(f'Combined rows     : {len(combined)}')
+
+          combined.to_csv(main_path, index=False)
+          print('Saved updated Power.csv')
+
+          os.makedirs(archive, exist_ok=True)
+          ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+          shutil.move(new_path, f'{archive}/new_data_{ts}.csv')
+          print('Archived new_data.csv')
+          "
+
+      - name: Run full pipeline
+        run: |
+          python src/preprocess.py
+          python src/model.py
+          python src/evaluate.py
+          python src/monitor.py
 
       - name: Push updated artifacts to DVC
         if: env.NEW_DATA == 'true'
         run: dvc push || echo "DVC push completed with warnings"
 
-      - name: Archive processed new data
-        if: env.NEW_DATA == 'true'
-        run: |
-          mkdir -p data/processed
-          timestamp=$(date +%Y%m%d_%H%M%S)
-          mv data/new_data.csv data/processed/new_data_${timestamp}.csv
-          echo "Archived new_data.csv"
-
       - name: Commit updated files
-        if: env.NEW_DATA == 'true'
         run: |
-          git add artifacts/ monitoring/ data/processed/ dvc.lock || true
+          git add artifacts/ monitoring/ || true
+          if [ "$NEW_DATA" = "true" ]; then
+            git add data/processed/ dvc.lock || true
+          fi
           if git diff --staged --quiet; then
             echo "Nothing to commit."
           else
-            git commit -m "Auto-retrain: updated model with new power data [skip ci]"
+            git commit -m "Pipeline run: updated artifacts and monitoring [skip ci]"
             git push
           fi
 
@@ -123,8 +139,8 @@ jobs:
           echo "========================================"
           echo " PIPELINE COMPLETE"
           if [ "$NEW_DATA" = "true" ]; then
-            echo " Full retrain triggered by new data."
+            echo " New data detected — merged and retrained."
           else
-            echo " Monitoring only — no new data."
+            echo " No new data — pipeline ran on existing data."
           fi
           echo "========================================"

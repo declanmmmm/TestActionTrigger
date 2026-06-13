@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from sklearn.metrics import (
     accuracy_score, f1_score, precision_score, recall_score,
-    classification_report,
+    classification_report, confusion_matrix, ConfusionMatrixDisplay,
 )
 
 
@@ -88,27 +88,48 @@ with open(metrics_path, "w") as f:
     json.dump(metrics_out, f, indent=4)
 print(f"\nSaved metrics → {metrics_path}")
 
-# ── Plot: predicted vs actual ─────────────────────────────────
-fig, ax = plt.subplots(figsize=(7, 6))
+# ── Plot: confusion matrix + per-class metrics ────────────────
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-ax.scatter(y_test, y_pred, alpha=0.4, s=20, color="steelblue")
-
-# Diagonal perfect-prediction line
-mn = min(y_test.min(), y_pred.min())
-mx = max(y_test.max(), y_pred.max())
-ax.plot([mn, mx], [mn, mx], linestyle="--", linewidth=1.5, color="steelblue")
-
-ax.set_xlabel("Actual Class")
-ax.set_ylabel("Predicted Class")
-ax.set_title(
-    f"Predicted vs Actual\n"
-    f"Accuracy = {accuracy:.4f}, F1 = {f1:.4f}"
+# Left: confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_labels)
+disp.plot(ax=axes[0], colorbar=False)
+axes[0].set_title(
+    f"Confusion Matrix\n{bundle['model_name']} — Accuracy {accuracy:.4f}",
+    fontweight="bold"
 )
-ax.set_xticks(range(len(class_labels)))
-ax.set_yticks(range(len(class_labels)))
-ax.set_xticklabels(class_labels)
-ax.set_yticklabels(class_labels)
-ax.grid(True, linestyle="--", alpha=0.4)
+
+# Right: per-class precision / recall / F1 grouped bar chart
+x         = np.arange(len(class_labels))
+bar_width  = 0.25
+precisions = [report[l]["precision"] for l in class_labels]
+recalls    = [report[l]["recall"]    for l in class_labels]
+f1s        = [report[l]["f1-score"]  for l in class_labels]
+
+axes[1].bar(x - bar_width, precisions, bar_width, label="Precision", color="steelblue")
+axes[1].bar(x,             recalls,    bar_width, label="Recall",    color="darkorange")
+axes[1].bar(x + bar_width, f1s,        bar_width, label="F1-score",  color="seagreen")
+
+axes[1].set_xticks(x)
+axes[1].set_xticklabels(class_labels)
+axes[1].set_ylim(0, 1.1)
+axes[1].set_ylabel("Score")
+axes[1].set_title("Per-Class Metrics", fontweight="bold")
+axes[1].legend()
+axes[1].grid(axis="y", linestyle="--", alpha=0.4)
+
+for bars, values in zip(
+    [axes[1].containers[0], axes[1].containers[1], axes[1].containers[2]],
+    [precisions, recalls, f1s]
+):
+    for bar, val in zip(bars, values):
+        axes[1].text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.01,
+            f"{val:.2f}",
+            ha="center", va="bottom", fontsize=8
+        )
 
 plt.tight_layout()
 plt.savefig("artifacts/model_comparison.png", dpi=120, bbox_inches="tight")

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from sklearn.metrics import (
     accuracy_score, f1_score, precision_score, recall_score,
-    classification_report, ConfusionMatrixDisplay, confusion_matrix,
+    classification_report,
 )
 
 
@@ -88,30 +88,27 @@ with open(metrics_path, "w") as f:
     json.dump(metrics_out, f, indent=4)
 print(f"\nSaved metrics → {metrics_path}")
 
-# ── Plots: confusion matrix + feature importance ──────────────
-fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+# ── Plot: predicted vs actual ─────────────────────────────────
+fig, ax = plt.subplots(figsize=(7, 6))
 
-# Confusion matrix
-cm = confusion_matrix(y_test, y_pred)
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_labels)
-disp.plot(ax=axes[0], colorbar=False)
-axes[0].set_title(f"Confusion Matrix\n{bundle['model_name']} — Accuracy {accuracy:.4f}")
+ax.scatter(y_test, y_pred, alpha=0.4, s=20, color="steelblue")
 
-# Feature importance (RF) or bar of ones (KNN placeholder)
-if bundle.get("feature_importances"):
-    importances = bundle["feature_importances"]
-    feats  = list(importances.keys())
-    values = list(importances.values())
-    order  = np.argsort(values)
-    axes[1].barh([feats[i] for i in order], [values[i] for i in order],
-                 color="steelblue")
-    axes[1].set_xlabel("Importance")
-    axes[1].set_title("Feature Importances (Random Forest)")
-    axes[1].grid(axis="x", linestyle="--", alpha=0.4)
-else:
-    axes[1].text(0.5, 0.5, "Feature importance\nnot available for KNN",
-                 ha="center", va="center", transform=axes[1].transAxes)
-    axes[1].set_title("Feature Importances")
+# Diagonal perfect-prediction line
+mn = min(y_test.min(), y_pred.min())
+mx = max(y_test.max(), y_pred.max())
+ax.plot([mn, mx], [mn, mx], linestyle="--", linewidth=1.5, color="steelblue")
+
+ax.set_xlabel("Actual Class")
+ax.set_ylabel("Predicted Class")
+ax.set_title(
+    f"Predicted vs Actual\n"
+    f"Accuracy = {accuracy:.4f}, F1 = {f1:.4f}"
+)
+ax.set_xticks(range(len(class_labels)))
+ax.set_yticks(range(len(class_labels)))
+ax.set_xticklabels(class_labels)
+ax.set_yticklabels(class_labels)
+ax.grid(True, linestyle="--", alpha=0.4)
 
 plt.tight_layout()
 eval_plot = "artifacts/metrics/evaluation_results.png"

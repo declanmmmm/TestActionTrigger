@@ -111,10 +111,9 @@ ax.set_yticklabels(class_labels)
 ax.grid(True, linestyle="--", alpha=0.4)
 
 plt.tight_layout()
-eval_plot = "artifacts/metrics/evaluation_results.png"
-plt.savefig(eval_plot, dpi=120, bbox_inches="tight")
+plt.savefig("artifacts/model_comparison.png", dpi=120, bbox_inches="tight")
 plt.close()
-print(f"Saved evaluation plot → {eval_plot}")
+print("Saved evaluation plot → artifacts/model_comparison.png")
 
 print("\n" + "=" * 65)
 print("EVALUATION COMPLETE")

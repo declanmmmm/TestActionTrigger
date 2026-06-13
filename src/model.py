@@ -81,25 +81,6 @@ if best_name == "Random Forest":
         for col, imp in zip(feature_cols, rf.feature_importances_)
     }
 
-# ── Accuracy comparison plot ──────────────────────────────────
-fig, ax = plt.subplots(figsize=(7, 5))
-bars = ax.bar(
-    ["Random Forest", "KNN"],
-    [rf_train_acc, knn_train_acc],
-    color=["steelblue", "darkorange"],
-    width=0.5,
-)
-ax.set_ylabel("Training Accuracy")
-ax.set_title("Model Comparison — Power Consumption Classification")
-ax.set_ylim(0, 1.05)
-for bar, acc in zip(bars, [rf_train_acc, knn_train_acc]):
-    ax.text(bar.get_x() + bar.get_width() / 2, acc + 0.01,
-            f"{acc:.4f}", ha="center", fontsize=11)
-plt.tight_layout()
-plt.savefig(plot_path, dpi=120)
-plt.close()
-print(f"Saved comparison plot → {plot_path}")
-
 # ── Save deployment bundle ────────────────────────────────────
 le = joblib.load("artifacts/preprocessing/label_encoder.pkl")
 

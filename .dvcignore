@@ -1,0 +1,5 @@
+#DVC ignore file
+  
+.DS_Store
+_pycache_/
+*.pyc

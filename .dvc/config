@@ -1,0 +1,7 @@
+[core]
+    remote = origin
+['remote "origin"']
+    url = https://dagshub.com/declanmmmm/TestActionTrigger.dvc
+    auth = basic
+    user = declanmmmm
+    password = 5e6c29cbf4c372579687e43f770e6610c4805f8f
